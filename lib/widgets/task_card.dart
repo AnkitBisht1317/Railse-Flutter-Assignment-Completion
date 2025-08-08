@@ -19,109 +19,151 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOverdue =
-        task.dueDate.isBefore(DateTime.now()) && task.status != 'Completed';
-    final dateFormat = DateFormat('yyyy-MM-dd');
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
 
-    Color statusColor;
+    final now = DateTime.now();
+    final dateFormat = DateFormat('MMM d');
+    final timeFormat = DateFormat('HH:mm');
+
+    final isOverdue = task.dueDate.isBefore(now) && task.status != 'Completed';
+    final isDueTomorrow = task.dueDate.difference(now).inDays == 1;
+    final isDueSoon =
+        task.dueDate.difference(now).inDays > 1 &&
+        task.dueDate.difference(now).inDays <= 3;
+
     String statusText;
+    Color statusColor;
+
     if (task.status == 'Completed') {
+      statusText = 'Completed: ${dateFormat.format(task.dueDate)}';
       statusColor = Colors.green;
-      statusText = 'Completed';
     } else if (isOverdue) {
+      final diff = now.difference(task.dueDate);
+      statusText = 'Overdue – ${diff.inHours}h ${diff.inMinutes % 60}m';
       statusColor = Colors.red;
-      statusText = 'Overdue';
-    } else {
+    } else if (isDueTomorrow) {
+      statusText = 'Due Tomorrow';
       statusColor = Colors.orange;
-      statusText = 'Due: ${dateFormat.format(task.dueDate)}';
+    } else if (isDueSoon) {
+      statusText = 'Due in ${task.dueDate.difference(now).inDays} days';
+      statusColor = Colors.deepOrangeAccent;
+    } else {
+      statusText = '';
+      statusColor = Colors.black;
     }
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Title and Description Section
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                Text(
-                  task.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                // Left Section
+                SizedBox(
+                  width: screenWidth * 0.55,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallScreen ? 14 : 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        task.description,
+                        style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        task.assignee,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      if (task.priority == 'High') ...[
+                        const SizedBox(height: 4),
+                        const Text(
+                          'High Priority',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (task.status != 'Completed')
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: onEditDate,
+
+                // Right Section
+                SizedBox(
+                  width: screenWidth * 0.3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (task.status != 'Completed')
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isSmallScreen ? 12 : 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: onEditDate,
+                              child: const Icon(Icons.edit, size: 18),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          statusText,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Started: ${dateFormat.format(task.startDate)}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      if (task.status == 'Not Started')
+                        ElevatedButton(
+                          onPressed: onStartTask,
+                          child: const Text('Start Task'),
+                        )
+                      else if (task.status == 'Started')
+                        TextButton(
+                          onPressed: onMarkComplete,
+                          child: const Text('Mark as complete'),
+                        )
+                      else
+                        const Text("Task Completed ✅"),
+                    ],
                   ),
+                ),
               ],
             ),
-
-            const SizedBox(height: 4),
-            Text(task.description, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16),
-                const SizedBox(width: 6),
-                Text("Due: ${dateFormat.format(task.dueDate)}"),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16),
-                const SizedBox(width: 6),
-                Text("Assignee: ${task.assignee}"),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.flag, size: 16),
-                const SizedBox(width: 6),
-                Text("Priority: ${task.priority}"),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.info, size: 16),
-                const SizedBox(width: 6),
-                Text("Status: ${task.status}"),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Status bar
-            Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
-            ),
-
-            const SizedBox(height: 10),
-
-            if (task.status == 'Not Started')
-              ElevatedButton(
-                onPressed: onStartTask,
-                child: const Text("Start Task"),
-              )
-            else if (task.status == 'Started')
-              ElevatedButton(
-                onPressed: onMarkComplete,
-                child: const Text("Mark as Complete"),
-              )
-            else
-              const Text(
-                "Task Completed ✅",
-                style: TextStyle(color: Colors.green),
-              ),
           ],
         ),
       ),
